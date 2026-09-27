@@ -1,0 +1,27 @@
+export declare const WS_EVENTS: {
+    readonly CONNECT: "connect";
+    readonly DISCONNECT: "disconnect";
+    readonly ERROR: "error";
+    readonly TERMINAL_CREATE: "terminal:create";
+    readonly TERMINAL_INPUT: "terminal:input";
+    readonly TERMINAL_OUTPUT: "terminal:output";
+    readonly TERMINAL_RESIZE: "terminal:resize";
+    readonly TERMINAL_CLOSE: "terminal:close";
+    readonly TERMINAL_EXIT: "terminal:exit";
+    readonly FS_CHANGE: "fs:change";
+    readonly FS_CREATED: "fs:created";
+    readonly FS_MODIFIED: "fs:modified";
+    readonly FS_DELETED: "fs:deleted";
+    readonly FS_RENAMED: "fs:renamed";
+    readonly GIT_STATUS_CHANGED: "git:statusChanged";
+    readonly GIT_BRANCH_CHANGED: "git:branchChanged";
+    readonly SEARCH_RESULT: "search:result";
+    readonly SEARCH_COMPLETE: "search:complete";
+    readonly SEARCH_ERROR: "search:error";
+    readonly AI_MESSAGE: "ai:message";
+    readonly AI_TOOL_CALL: "ai:toolCall";
+    readonly AI_TOOL_RESULT: "ai:toolResult";
+    readonly AI_STATUS: "ai:status";
+    readonly AI_ERROR: "ai:error";
+};
+export type WSEventName = typeof WS_EVENTS[keyof typeof WS_EVENTS];

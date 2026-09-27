@@ -1,0 +1,8 @@
+appId: com.local-ai-coding-ide.app
+productName: Local AI Coding IDE
+directories:
+  output: dist-electron
+files:
+  - dist/**/*
+  - electron-dist/**/*
+  - package.json

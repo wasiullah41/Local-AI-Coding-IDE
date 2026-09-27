@@ -1,0 +1,42 @@
+{
+  "name": "@local-ide/backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "jest",
+    "lint": "echo \"Lint pending\" && exit 0"
+  },
+  "dependencies": {
+    "@local-ide/shared": "file:../shared",
+    "axios": "^1.20.0",
+    "better-sqlite3": "^11.1.2",
+    "chokidar": "^3.6.0",
+    "cors": "^2.8.5",
+    "dotenv": "^18.0.1",
+    "express": "^4.19.2",
+    "glob": "^10.4.1",
+    "helmet": "^7.1.0",
+    "node-pty": "^1.0.0",
+    "simple-git": "^3.25.0",
+    "uuid": "^10.0.0",
+    "ws": "^8.17.0"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.5.2",
+    "@types/better-sqlite3": "^7.6.10",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^7.2.1",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.5.10",
+    "jest": "^30.5.2",
+    "supertest": "^7.3.0",
+    "ts-jest": "^29.4.12",
+    "tsx": "^4.15.7",
+    "typescript": "^5.4.5"
+  }
+}
