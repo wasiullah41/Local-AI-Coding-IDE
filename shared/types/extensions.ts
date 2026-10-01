@@ -32,3 +32,23 @@ export type ExtensionInfo = {
   state: ExtensionState;
   installPath: string;
 };
+
+/**
+ * Flat shape returned by `GET /api/extensions`.
+ *
+ * Distinct from `ExtensionInfo`, which models a manifest on disk. Both are
+ * used, so they are kept separate rather than merged.
+ */
+export type ExtensionSummary = {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  version: string;
+  author: string;
+  category: string;
+  enabled: boolean;
+  builtin: boolean;
+  languages?: string[];
+  fileExtensions?: string[];
+};

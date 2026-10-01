@@ -17,6 +17,32 @@ export interface FileEntry {
 }
 
 export class FilesystemService {
+  /**
+   * `fs.realpath` throws when the path does not exist yet, which happens when a
+   * workspace root is registered before the directory is created. Falling back
+   * to the lexically resolved path keeps that flow working; an existing
+   * workspace always resolves for real, so the boundary check still holds.
+   */
+  private async realpathOrSelf(target: string): Promise<string> {
+    try {
+      return await fs.realpath(target);
+    } catch (err: any) {
+      if (err.code === 'ENOENT') return path.resolve(target);
+      throw err;
+    }
+  }
+
+  /**
+   * Confirms the target really lives inside the workspace.
+   *
+   * A lexical check is not enough on Windows: a symlink or directory junction
+   * (created with `mklink /J`, which needs no elevation) can sit anywhere along
+   * the path and redirect access outside the workspace. Checking only the final
+   * component left `<workspace>/link/secret.txt` readable, because the leaf is
+   * an ordinary file and the junction is an ancestor. So every component below
+   * the root is inspected, and a link is resolved by hand because `realpath`
+   * fails when a link points at a file that does not exist yet.
+   */
   private async validatePath(targetPath: string): Promise<string> {
     if (!isPathInsideWorkspace(targetPath)) {
       throw new AppError(403, 'ACCESS_DENIED', 'Path is outside workspace boundary');
@@ -30,49 +56,57 @@ export class FilesystemService {
 
     // Resolve relative to workspace root
     const resolvedPath = path.resolve(workspaceRoot, targetPath);
+    const workspaceRealPath = FilesystemService.stripExtendedPrefix(
+      await this.realpathOrSelf(workspaceRoot)
+    );
 
-    // Check if the path itself is a symlink first (using lstat)
-    try {
-      const stats = await fs.lstat(resolvedPath);
-      if (stats.isSymbolicLink()) {
-        // It's a symlink - check where it points using readlink
-        const linkTarget = await fs.readlink(resolvedPath);
-        // Resolve the link target relative to the symlink's directory
-        const resolvedTarget = path.resolve(path.dirname(resolvedPath), linkTarget);
-        const workspaceRealPath = await fs.realpath(workspaceRoot);
+    const segments = path.relative(path.resolve(workspaceRoot), resolvedPath).split(path.sep);
+    let current = path.resolve(workspaceRoot);
 
-        const relative = path.relative(workspaceRealPath, resolvedTarget);
-        if (relative.startsWith('..') || path.isAbsolute(relative)) {
-          throw new AppError(403, 'ACCESS_DENIED', 'Path resolves outside workspace boundary (symlink/junction detected)');
-        }
-      }
-    } catch (err: any) {
-      if (err.code === 'ENOENT') {
-        // Path doesn't exist yet - check parent directory
-        const parentDir = path.dirname(resolvedPath);
-        try {
-          const parentStats = await fs.lstat(parentDir);
-          if (parentStats.isSymbolicLink()) {
-            // Parent is a symlink - verify it stays in workspace
-            const linkTarget = await fs.readlink(parentDir);
-            const resolvedTarget = path.resolve(path.dirname(parentDir), linkTarget);
-            const workspaceRealPath = await fs.realpath(workspaceRoot);
-            const relative = path.relative(workspaceRealPath, resolvedTarget);
-            if (relative.startsWith('..') || path.isAbsolute(relative)) {
-              throw new AppError(403, 'ACCESS_DENIED', 'Parent directory resolves outside workspace boundary');
-            }
-          }
-        } catch (parentErr: any) {
-          if (parentErr.code !== 'ENOENT') throw parentErr;
-          // Parent doesn't exist - will be created, proceed
-        }
-      } else if (err instanceof AppError) {
+    for (const segment of segments) {
+      if (!segment) continue;
+      current = path.join(current, segment);
+
+      let stats;
+      try {
+        stats = await fs.lstat(current);
+      } catch (err: any) {
+        // The rest of the path does not exist yet, so there is no link left to
+        // inspect. Creating it later cannot escape the workspace.
+        if (err.code === 'ENOENT') return resolvedPath;
         throw err;
       }
-      // Other errors during check are non-fatal
+
+      if (!stats.isSymbolicLink()) continue;
+
+      // Follow the link manually: realpath() would throw when the target has
+      // not been created yet, which is exactly the write-through case.
+      const linkTarget = await fs.readlink(current);
+      const absoluteTarget = path.resolve(path.dirname(current), linkTarget);
+      const realParent = FilesystemService.stripExtendedPrefix(
+        await this.realpathOrSelf(path.dirname(absoluteTarget))
+      );
+      const resolvedTarget = path.join(realParent, path.basename(absoluteTarget));
+
+      const relative = path.relative(workspaceRealPath, resolvedTarget);
+      if (relative.startsWith('..') || path.isAbsolute(relative)) {
+        throw new AppError(
+          403,
+          'ACCESS_DENIED',
+          'Path resolves outside workspace boundary (symlink/junction detected)'
+        );
+      }
+
+      // The link stays inside the workspace, so keep checking what lies below it.
+      current = realParent;
     }
 
     return resolvedPath;
+  }
+
+  /** Windows junctions report their target as `\\?\C:\...`; drop that prefix. */
+  private static stripExtendedPrefix(target: string): string {
+    return target.replace(/^\\\\\?\\/, '');
   }
 
   async readDirectory(
@@ -144,9 +178,10 @@ export class FilesystemService {
       }
 
       return result;
-    } catch (err: any) {
-      throw new AppError(500, 'FS_READ_ERROR', `Failed to read directory: ${err.message}`);
-    }
+      } catch (err: any) {
+        if (err instanceof AppError) throw err;
+        throw new AppError(500, 'FS_READ_ERROR', `Failed to read directory: ${err.message}`);
+      }
   }
 
   async readFile(filePath: string): Promise<{
@@ -191,6 +226,7 @@ export class FilesystemService {
       await fs.mkdir(dir, { recursive: true });
       await fs.writeFile(resolvedPath, content, 'utf-8');
     } catch (err: any) {
+      if (err instanceof AppError) throw err;
       throw new AppError(500, 'FS_WRITE_ERROR', `Failed to write file: ${err.message}`);
     }
   }
@@ -217,6 +253,7 @@ export class FilesystemService {
     try {
       await fs.mkdir(await this.validatePath(dirPath), { recursive: true });
     } catch (err: any) {
+      if (err instanceof AppError) throw err;
       throw new AppError(500, 'FS_CREATE_ERROR', `Failed to create directory: ${err.message}`);
     }
   }
@@ -225,6 +262,7 @@ export class FilesystemService {
     try {
       await fs.rename(await this.validatePath(oldPath), await this.validatePath(newPath));
     } catch (err: any) {
+      if (err instanceof AppError) throw err;
       throw new AppError(500, 'FS_RENAME_ERROR', `Failed to rename: ${err.message}`);
     }
   }
@@ -240,6 +278,7 @@ export class FilesystemService {
         await fs.unlink(resolvedPath);
       }
     } catch (err: any) {
+      if (err instanceof AppError) throw err;
       if (err.code === 'ENOENT') return; // Already deleted
       throw new AppError(500, 'FS_DELETE_ERROR', `Failed to delete: ${err.message}`);
     }
@@ -273,6 +312,7 @@ export class FilesystemService {
         modifiedAt: stat.mtime.toISOString(),
       };
     } catch (err: any) {
+      if (err instanceof AppError) throw err;
       throw new AppError(404, 'NOT_FOUND', `Path not found: ${err.message}`);
     }
   }

@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { Search } from 'lucide-react';
 import { SearchInput } from './SearchInput';
 import { SearchResults } from './SearchResults';
 import { useSearchStore } from '../../stores/searchStore';
@@ -39,12 +38,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ workspaceRoot }) => {
   }, [query, options, workspaceRoot, setResults, setIsSearching, setError]);
 
   return (
-    <div className="h-full flex flex-col bg-gray-900">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-800">
-        <Search className="h-4 w-4 text-gray-500" />
-        <span className="text-xs font-bold text-gray-500">SEARCH</span>
-      </div>
-
+    <div className="flex flex-col h-full min-h-0">
       <SearchInput />
       <SearchResults />
     </div>

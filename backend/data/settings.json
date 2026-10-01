@@ -1,0 +1,74 @@
+{
+  "general": {
+    "language": "en",
+    "autoSave": "off",
+    "autoSaveDelay": 1000
+  },
+  "editor": {
+    "fontSize": 14,
+    "fontFamily": "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace",
+    "tabSize": 2,
+    "insertSpaces": true,
+    "wordWrap": "off",
+    "wordWrapColumn": 80,
+    "minimap": true,
+    "lineNumbers": "on",
+    "renderWhitespace": "none",
+    "bracketPairColorization": true,
+    "guides": true,
+    "smoothScrolling": true,
+    "cursorBlinking": "blink",
+    "cursorStyle": "line",
+    "formatOnSave": false,
+    "formatOnPaste": false
+  },
+  "terminal": {
+    "defaultShell": "powershell.exe",
+    "fontSize": 13,
+    "fontFamily": "'JetBrains Mono', 'Consolas', monospace",
+    "cursorStyle": "block",
+    "scrollback": 5000
+  },
+  "appearance": {
+    "theme": "dark",
+    "sidebarPosition": "left",
+    "activityBarVisible": true,
+    "statusBarVisible": true,
+    "menuBarVisible": true
+  },
+  "files": {
+    "exclude": [
+      "node_modules",
+      ".git",
+      "dist",
+      "build",
+      "coverage"
+    ],
+    "watcherExclude": [
+      "node_modules",
+      ".git",
+      "dist",
+      "build"
+    ],
+    "defaultEncoding": "utf-8",
+    "trimTrailingWhitespace": false,
+    "insertFinalNewline": false
+  },
+  "search": {
+    "exclude": [
+      "node_modules",
+      ".git",
+      "dist",
+      "build",
+      "coverage"
+    ],
+    "maxResults": 500,
+    "followSymlinks": false
+  },
+  "git": {
+    "enabled": true,
+    "path": "git",
+    "autoFetch": false,
+    "autoFetchInterval": 180
+  }
+}

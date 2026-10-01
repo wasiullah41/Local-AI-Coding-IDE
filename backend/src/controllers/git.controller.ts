@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { gitService } from '../services/git/git.service';
-import { getWorkspaceRoot } from '../middleware/security.middleware';
+import { getWorkspaceRoot, isPathInsideWorkspace } from '../middleware/security.middleware';
 import { AppError } from '../middleware/error.middleware';
+import path from 'path';
 
 export class GitController {
   async getStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -50,6 +51,40 @@ export class GitController {
 
       await gitService.commit(workspace, message);
       res.json({ success: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Diff for a single file. The path is resolved against the workspace root and
+   * rejected if it escapes, so this cannot be used to read arbitrary files.
+   */
+  async getDiff(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { path: requestedPath } = req.body;
+      const workspace = getWorkspaceRoot();
+      if (!workspace || !requestedPath) throw new AppError(400, 'BAD_REQUEST', 'Missing path');
+
+      const absolute = path.resolve(workspace, requestedPath);
+      if (!isPathInsideWorkspace(absolute)) {
+        throw new AppError(403, 'PATH_ESCAPE', 'That path is outside the workspace.');
+      }
+
+      const status = await gitService.getStatus(workspace);
+      const relativePath = path.relative(workspace, absolute);
+      const change = status.changes.find(
+        (candidate) => path.resolve(candidate.path) === absolute
+      );
+
+      const diff = await gitService.getFileDiff(
+        workspace,
+        absolute,
+        relativePath,
+        change?.staged ?? false
+      );
+
+      res.json({ success: true, data: diff });
     } catch (err) {
       next(err);
     }

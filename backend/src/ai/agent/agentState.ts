@@ -1,8 +1,18 @@
-import { AITool, AIToolResult } from '../tools/toolTypes';
+import { AIToolResult } from '../tools/toolTypes';
 
-export type AgentStatus = 'IDLE' | 'PLANNING' | 'EXECUTING' | 'VERIFYING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+export type AgentStatus =
+  | 'IDLE'
+  | 'QUEUED'
+  | 'PLANNING'
+  | 'EXECUTING'
+  | 'VERIFYING'
+  | 'WAITING_PERMISSION'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED';
 
 export interface AgentState {
+  taskId: string;
   task: string;
   workspaceRoot: string;
   messages: { role: 'user' | 'assistant' | 'tool'; content: string }[];
@@ -12,14 +22,22 @@ export interface AgentState {
   toolResults: AIToolResult[];
   filesRead: string[];
   filesChanged: string[];
-  verificationResults: string[];
+  verificationResults: { command?: string; success: boolean; exitCode?: number }[];
   iterationCount: number;
   status: AgentStatus;
+  summary?: string;
   error?: string;
+  startedAt: number;
+  finishedAt?: number;
 }
 
-export function createInitialState(task: string, workspaceRoot: string): AgentState {
+export function createInitialState(
+  task: string,
+  workspaceRoot: string,
+  taskId = 'adhoc'
+): AgentState {
   return {
+    taskId,
     task,
     workspaceRoot,
     messages: [],
@@ -32,5 +50,29 @@ export function createInitialState(task: string, workspaceRoot: string): AgentSt
     verificationResults: [],
     iterationCount: 0,
     status: 'IDLE',
+    startedAt: Date.now(),
   };
+}
+
+/** Maps a backend status to the phase label the UI renders. */
+export function toPhase(status: AgentStatus): string {
+  switch (status) {
+    case 'QUEUED':
+      return 'IDLE';
+    case 'PLANNING':
+    case 'EXECUTING':
+      return 'THINKING';
+    case 'VERIFYING':
+      return 'VERIFYING';
+    case 'WAITING_PERMISSION':
+      return 'WAITING_PERMISSION';
+    case 'COMPLETED':
+      return 'COMPLETED';
+    case 'FAILED':
+      return 'FAILED';
+    case 'CANCELLED':
+      return 'CANCELLED';
+    default:
+      return 'IDLE';
+  }
 }

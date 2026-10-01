@@ -27,13 +27,20 @@ export function validateWorkspaceBoundary(req: Request, _res: Response, next: Ne
     return;
   }
 
-  const filePath = req.body?.path || req.query?.path || req.body?.oldPath || req.body?.newPath;
-  if (!filePath) {
+  const candidatePaths = [
+    req.body?.path,
+    req.query?.path,
+    req.body?.oldPath,
+    req.body?.newPath,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  if (candidatePaths.length === 0) {
     next();
     return;
   }
 
-  if (!isPathInsideWorkspace(filePath)) {
+  const outside = candidatePaths.find((value) => !isPathInsideWorkspace(value));
+  if (outside !== undefined) {
     next(new AppError(403, 'ACCESS_DENIED', 'Path is outside workspace boundary'));
     return;
   }

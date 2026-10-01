@@ -1,20 +1,39 @@
 import { useAIStore } from '../../stores/aiStore';
+import { useWorkspaceStore } from '../../stores/workspaceStore';
+import { ideSocket } from './ideWebSocket';
+import { AgentEvent, AgentTaskSnapshot } from '@local-ide/shared';
 
-class AIWebSocketService {
-  private socket: WebSocket | null = null;
+let bound = false;
 
-  connect() {
-    this.socket = new WebSocket(`ws://${window.location.hostname}:3001/ws`); // Backend port is 3001
+/**
+ * Wires agent events from the shared WebSocket into the AI store.
+ *
+ * Bound once at app start so events keep arriving whether or not the AI panel
+ * is currently visible — a task started before the panel is opened is not lost.
+ */
+export function bindAgentEvents(): void {
+  if (bound) return;
+  bound = true;
 
-    this.socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'agent:task_status') {
-        useAIStore.getState().setStatus(data.data.status);
-      } else if (data.type === 'agent:event') {
-        useAIStore.getState().addEvent(data.data);
+  ideSocket.on((type, data) => {
+    if (type === 'agent:event') {
+      useAIStore.getState().applyEvent(data as unknown as AgentEvent);
+      return;
+    }
+
+    if (type === 'agent:task_status') {
+      const store = useAIStore.getState();
+      // A status frame for the task we are following.
+      if (store.taskId && data.taskId === store.taskId) {
+        const snapshot = data as unknown as AgentTaskSnapshot;
+        if (snapshot.status) store.applySnapshot(snapshot);
       }
-    };
-  }
-}
+    }
+  });
 
-export const aiWebSocketService = new AIWebSocketService();
+  ideSocket.onStatus((status) => {
+    useWorkspaceStore.getState().setConnection(status);
+  });
+
+  ideSocket.connect();
+}

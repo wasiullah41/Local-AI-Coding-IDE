@@ -98,7 +98,11 @@ function createTerminal(ws: WebSocket, data: { shell?: string; cwd?: string; nam
 
     ws.send(JSON.stringify({
       type: WS_EVENTS.TERMINAL_CREATE,
-      data: session,
+      // The session record uses `id`, but every other terminal message keys the
+      // session as `sessionId`. The renderer matched xterm hosts by `sessionId`,
+      // so a create payload carrying only `id` left it keyed by `undefined` and
+      // all output was dropped. Send both names so the identifier is consistent.
+      data: { ...session, sessionId: session.id },
     }));
   } catch (err: any) {
     terminalService.removeSession(session.id);

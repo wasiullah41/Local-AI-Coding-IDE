@@ -3,45 +3,76 @@ import { filesystemService } from '../../services/filesystem/filesystem.service'
 
 export const editFileTool: AITool = {
   name: 'edit_file',
-  description: 'Edit the content of an existing file by replacing old text with new text.',
+  description:
+    'Edit an existing file. Either pass oldText/newText to replace an exact snippet (it must appear exactly once), or pass content to rewrite the whole file.',
   inputSchema: {
     type: 'object',
     properties: {
-      path: { type: 'string', description: 'Relative path to the file' },
-      oldText: { type: 'string', description: 'The text to be replaced' },
-      newText: { type: 'string', description: 'The new text' },
+      path: { type: 'string', description: 'Path to the file, relative to the workspace root' },
+      oldText: { type: 'string', description: 'Exact existing text to replace' },
+      newText: { type: 'string', description: 'Replacement text' },
+      content: { type: 'string', description: 'Full new contents of the file' },
     },
-    required: ['path', 'oldText', 'newText'],
+    required: ['path'],
   },
   execute: async (args): Promise<AIToolResult> => {
-    const { path, oldText, newText } = args as { path: string; oldText: string; newText: string };
+    const { path, oldText, newText, content } = args as {
+      path: string;
+      oldText?: string;
+      newText?: string;
+      content?: string;
+    };
+
     try {
-      // 1. Read the file
       const fileData = await filesystemService.readFile(path);
-      const content = fileData.content;
+      const existing = fileData.content;
 
-      // 2. Verify oldText exists
-      const occurrences = content.split(oldText).length - 1;
-      if (occurrences === 0) {
-        return { success: false, error: `Text not found: ${oldText}` };
+      let updated: string;
+      let summary: string;
+
+      if (typeof content === 'string') {
+        updated = content;
+        summary =
+          existing === content
+            ? `No change needed in ${path}`
+            : `Rewrote ${path} (${existing.length} → ${content.length} chars)`;
+      } else if (typeof oldText === 'string' && typeof newText === 'string') {
+        const occurrences = existing.split(oldText).length - 1;
+        if (occurrences === 0) {
+          return {
+            success: false,
+            error: `oldText was not found in ${path}. Read the file first and copy the text exactly, or use "content" to rewrite it.`,
+          };
+        }
+        if (occurrences > 1) {
+          return {
+            success: false,
+            error: `oldText appears ${occurrences} times in ${path}. Include more surrounding context so it matches exactly one place.`,
+          };
+        }
+        updated = existing.replace(oldText, newText);
+        summary = `Edited ${path}: replaced "${truncate(oldText)}" with "${truncate(newText)}"`;
+      } else {
+        return {
+          success: false,
+          error: 'edit_file needs either oldText/newText or content.',
+        };
       }
-      if (occurrences > 1) {
-        return { success: false, error: `Multiple occurrences of text found: ${oldText}` };
-      }
 
-      // 3. Apply replacement
-      const newContent = content.replace(oldText, newText);
-
-      // 4. Write back
-      await filesystemService.writeFile(path, newContent);
+      await filesystemService.writeFile(path, updated);
 
       return {
         success: true,
-        changeSummary: `Updated ${path}: replaced "${oldText}" with "${newText}"`,
-        data: { path, originalContent: content, newContent },
+        changeSummary: summary,
+        data: { path, originalContent: existing, newContent: updated },
       };
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Failed to edit file' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to edit file.' };
     }
   },
 };
+
+function truncate(value: string, max = 60): string {
+  const single = value.replace(/\s+/g, ' ').trim();
+  return single.length > max ? `${single.slice(0, max)}…` : single;
+}

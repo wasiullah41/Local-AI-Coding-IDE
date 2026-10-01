@@ -17,38 +17,27 @@ class SearchService {
         },
       });
 
-      const results = response.data.data || [];
+      const data: unknown = response.data.data;
 
-      // Transform backend format to shared type format
-      interface BackendMatch {
-        line: number;
-        column: number;
-        length: number;
-        lineContent: string;
+      // The backend returns the shared SearchResult shape directly
+      // ({ totalMatches, files, limitReached }). An earlier version reshaped a
+      // legacy array of files here and called reduce() on the payload, which
+      // threw "reduce is not a function" and broke project-wide search.
+      // The shape is validated here so a future mismatch surfaces as a clear
+      // message instead of an opaque TypeError inside a React render.
+      if (
+        typeof data !== 'object' ||
+        data === null ||
+        !Array.isArray((data as SearchResult).files)
+      ) {
+        throw new Error('Search returned an unexpected response shape.');
       }
-      interface BackendFile {
-        file: string;
-        relativePath: string;
-        matches: BackendMatch[];
-      }
 
-      const typedResults = results as BackendFile[];
-      const totalMatches = typedResults.reduce((sum: number, file: BackendFile) => sum + file.matches.length, 0);
-      const limitReached = totalMatches >= (request.maxResults ?? 500);
-
+      const result = data as SearchResult;
       return {
-        totalMatches,
-        limitReached,
-        files: typedResults.map((file: BackendFile) => ({
-          filePath: file.file,
-          relativePath: file.relativePath,
-          matches: file.matches.map((match: BackendMatch) => ({
-            line: match.line,
-            column: match.column,
-            matchLength: match.length,
-            lineText: match.lineContent,
-          })),
-        })),
+        totalMatches: result.totalMatches ?? 0,
+        limitReached: result.limitReached ?? false,
+        files: result.files,
       };
     } catch (error) {
       if (error && typeof error === 'object' && 'response' in error) {

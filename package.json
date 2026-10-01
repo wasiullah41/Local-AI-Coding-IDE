@@ -1,8 +1,8 @@
 {
-  "name": "local-ai-coding-ide",
+  "name": "forgeai-studio",
   "version": "0.1.0",
   "private": true,
-  "description": "Local AI Coding IDE - A professional desktop development environment",
+  "description": "Local-first AI-powered coding environment",
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:electron\"",
     "dev:frontend": "cd frontend && npm run dev",

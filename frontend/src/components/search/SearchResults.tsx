@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Loader2, SearchX } from 'lucide-react';
 import { useSearchStore } from '../../stores/searchStore';
 import { SearchResultGroup } from './SearchResultGroup';
 import { useEditorStore } from '../../stores/editorStore';
@@ -6,75 +7,64 @@ import { useEditorStore } from '../../stores/editorStore';
 export const SearchResults: React.FC = () => {
   const { results, isSearching, error, query } = useSearchStore();
   const { openFile } = useEditorStore();
-  const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
-
-  const toggleFile = (filePath: string) => {
-    setExpandedFiles((prev) => {
-      const next = new Set(prev);
-      if (next.has(filePath)) {
-        next.delete(filePath);
-      } else {
-        next.add(filePath);
-      }
-      return next;
-    });
-  };
-
-  const handleMatchClick = (filePath: string, line: number, column: number) => {
-    openFile(filePath, line, column);
-  };
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   if (isSearching) {
     return (
-      <div className="flex items-center justify-center py-8 text-gray-500 text-sm">
-        Searching...
+      <div className="flex items-center gap-2 p-3 text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
+        <Loader2 size={13} className="anim-spin" />
+        Searching…
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="px-3 py-4 text-red-400 text-sm">
+      <p className="p-3 text-[12px]" style={{ color: 'var(--color-danger)' }}>
         {error}
-      </div>
+      </p>
     );
   }
 
-  if (!query) {
+  if (!query.trim()) {
     return (
-      <div className="flex items-center justify-center py-8 text-gray-500 text-sm">
-        Enter a search query
-      </div>
+      <p className="p-3 text-[12px]" style={{ color: 'var(--color-text-subtle)' }}>
+        Type something to search across the workspace.
+      </p>
     );
   }
 
   if (!results || results.files.length === 0) {
     return (
-      <div className="px-3 py-4 text-gray-500 text-sm">
-        No results found
+      <div className="flex items-center gap-2 p-3 text-[12px]" style={{ color: 'var(--color-text-subtle)' }}>
+        <SearchX size={13} />
+        No results for “{query}”
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="px-3 py-2 text-xs text-gray-400 border-b border-gray-700">
-        {results.totalMatches} result{results.totalMatches !== 1 ? 's' : ''} in{' '}
-        {results.files.length} file{results.files.length !== 1 ? 's' : ''}
-        {results.limitReached && ' (limit reached)'}
-      </div>
-
-      <div className="py-2">
-        {results.files.map((fileResult) => (
-          <SearchResultGroup
-            key={fileResult.filePath}
-            fileResult={fileResult}
-            isExpanded={expandedFiles.has(fileResult.filePath)}
-            onToggle={() => toggleFile(fileResult.filePath)}
-            onMatchClick={handleMatchClick}
-          />
-        ))}
-      </div>
+    <div className="flex-1 min-h-0 overflow-y-auto ide-scroll">
+      {results.files.map((fileResult) => (
+        <SearchResultGroup
+          key={fileResult.filePath}
+          fileResult={fileResult}
+          // Open by default; the user can collapse individual files.
+          isExpanded={!collapsed[fileResult.filePath]}
+          onToggle={() =>
+            setCollapsed((prev) => ({
+              ...prev,
+              [fileResult.filePath]: !prev[fileResult.filePath],
+            }))
+          }
+          onMatchClick={(filePath, line, column) => {
+            // Reveal the file in the editor at the match, then jump to it.
+            void openFile(filePath, line, column);
+          }}
+        />
+      ))}
     </div>
   );
 };
+
+export default SearchResults;

@@ -1,48 +1,123 @@
 import { WS_EVENTS } from '@local-ide/shared';
+import { ideSocket } from '../api/ideWebSocket';
 
-interface TerminalSession {
+export interface TerminalSession {
   sessionId: string;
   name: string;
   cwd: string;
+  shell?: string;
+}
+
+export interface TerminalExit {
+  sessionId: string;
+  exitCode: number;
+}
+
+export interface TerminalError {
+  message: string;
+  sessionId?: string;
+}
+
+/** Shape the backend may send for a terminal session. */
+interface RawTerminalSession {
+  id?: string;
+  sessionId?: string;
+  name?: string;
+  cwd?: string;
+  shell?: string;
+}
+
+/**
+ * The session record uses `id`, while terminal output/exit use `sessionId`.
+ * Normalising here keeps one identifier for the lifetime of the session
+ * instead of letting `undefined` silently become the xterm map key.
+ */
+function normalizeSession(raw: unknown): TerminalSession | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const value = raw as RawTerminalSession;
+  const sessionId = value.sessionId ?? value.id;
+  if (typeof sessionId !== 'string' || sessionId.length === 0) return null;
+  return {
+    sessionId,
+    name: value.name ?? 'Terminal',
+    cwd: value.cwd ?? '',
+    shell: value.shell,
+  };
+}
+
+export interface TerminalClientHandlers {
+  onCreate?: (session: TerminalSession) => void;
+  onData?: (sessionId: string, chunk: string) => void;
+  onExit?: (exit: TerminalExit) => void;
+  onError?: (error: TerminalError) => void;
 }
 
 class TerminalClient {
-  private socket: WebSocket | null = null;
-  private onDataCallback: ((sessionId: string, data: string) => void) | null = null;
-  private onCreateCallback: ((session: TerminalSession) => void) | null = null;
+  private handlers: TerminalClientHandlers = {};
+  private subscribed = false;
 
-  connect() {
-    this.socket = new WebSocket('ws://localhost:3001/ws');
-    this.socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === WS_EVENTS.TERMINAL_OUTPUT && this.onDataCallback) {
-        this.onDataCallback(message.data.sessionId, message.data.data);
-      } else if (message.type === WS_EVENTS.TERMINAL_CREATE && this.onCreateCallback) {
-        this.onCreateCallback(message.data);
+  connect(): void {
+    if (this.subscribed) return;
+    this.subscribed = true;
+
+    ideSocket.on((type, data) => {
+      switch (type) {
+        case WS_EVENTS.TERMINAL_CREATE: {
+          const session = normalizeSession(data);
+          if (session) {
+            this.handlers.onCreate?.(session);
+          } else {
+            this.handlers.onError?.({
+              message: 'The backend created a terminal session with an unusable identifier.',
+            });
+          }
+          break;
+        }
+        case WS_EVENTS.TERMINAL_OUTPUT:
+          this.handlers.onData?.(
+            String(data.sessionId ?? ''),
+            typeof data.data === 'string' ? data.data : ''
+          );
+          break;
+        case WS_EVENTS.TERMINAL_EXIT:
+          this.handlers.onExit?.({
+            sessionId: String(data.sessionId ?? ''),
+            exitCode: Number(data.exitCode ?? 0),
+          });
+          break;
+        case WS_EVENTS.ERROR:
+          this.handlers.onError?.({
+            message:
+              typeof data.message === 'string' ? data.message : 'The terminal reported an error.',
+            sessionId: data.sessionId ? String(data.sessionId) : undefined,
+          });
+          break;
       }
-    };
+    });
+
+    ideSocket.connect();
   }
 
-  setOnData(callback: (sessionId: string, data: string) => void) {
-    this.onDataCallback = callback;
+  setHandlers(handlers: TerminalClientHandlers): void {
+    this.handlers = handlers;
   }
 
-  setOnCreate(callback: (session: TerminalSession) => void) {
-    this.onCreateCallback = callback;
+  createTerminal(name: string, cwd: string, shell?: string): boolean {
+    return ideSocket.send(WS_EVENTS.TERMINAL_CREATE, { name, cwd, shell });
   }
 
-  createTerminal(name: string, cwd: string) {
-    this.socket?.send(JSON.stringify({
-      type: WS_EVENTS.TERMINAL_CREATE,
-      data: { name, cwd }
-    }));
+  sendInput(sessionId: string, data: string): boolean {
+    return ideSocket.send(WS_EVENTS.TERMINAL_INPUT, { sessionId, data });
   }
 
-  sendInput(sessionId: string, data: string) {
-    this.socket?.send(JSON.stringify({
-      type: WS_EVENTS.TERMINAL_INPUT,
-      data: { sessionId, data }
-    }));
+  /** Keeps the PTY in step with the visible column/row count. */
+  resize(sessionId: string, cols: number, rows: number): boolean {
+    if (!Number.isFinite(cols) || !Number.isFinite(rows) || cols <= 0 || rows <= 0) return false;
+    return ideSocket.send(WS_EVENTS.TERMINAL_RESIZE, { sessionId, cols, rows });
+  }
+
+  close(sessionId: string): boolean {
+    return ideSocket.send(WS_EVENTS.TERMINAL_CLOSE, { sessionId });
   }
 }
 

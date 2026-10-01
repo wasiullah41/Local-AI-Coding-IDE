@@ -2,8 +2,299 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
+/* ---------------------------------------------------------------------------
+   Global shell
+   --------------------------------------------------------------------------- */
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-text);
+  background: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* A desktop app should not feel like a web page. */
+  user-select: none;
+  cursor: default;
+}
+
+[data-selectable],
+input,
+textarea,
+code,
+pre,
+.editor-surface {
+  user-select: text;
+}
+
+/* ---------------------------------------------------------------------------
+   Scrollbars — thin and unobtrusive, matching the panel they sit in
+   --------------------------------------------------------------------------- */
+
+.ide-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+.ide-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.ide-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ide-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 6px;
+}
+.ide-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-subtle);
+  background-clip: content-box;
+}
+.ide-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   Focus: visible for keyboard users, quiet for pointer users
+   --------------------------------------------------------------------------- */
+
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 1px solid var(--color-focus-ring);
+  outline-offset: -1px;
+}
+
+/* ---------------------------------------------------------------------------
+   Small shared primitives
+   --------------------------------------------------------------------------- */
+
+.ide-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.ide-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  transition: background-color 90ms ease, color 90ms ease;
+}
+.ide-icon-button:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+.ide-icon-button:active {
+  background: var(--color-active);
+}
+.ide-icon-button[aria-pressed='true'],
+.ide-icon-button[data-active='true'] {
+  color: var(--color-text-strong);
+}
+
+.ide-input {
+  width: 100%;
+  background: var(--color-elevated);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: var(--color-text);
+  transition: border-color 100ms ease;
+}
+.ide-input::placeholder {
+  color: var(--color-text-subtle);
+}
+.ide-input:focus {
+  border-color: var(--color-focus-ring);
+  outline: none;
+}
+
+.ide-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition: background-color 100ms ease, border-color 100ms ease, opacity 100ms ease;
+  white-space: nowrap;
+}
+.ide-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ide-button--primary {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+.ide-button--primary:not(:disabled):hover {
+  background: var(--color-accent-hover);
+}
+.ide-button--secondary {
+  background: var(--color-elevated);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+.ide-button--secondary:not(:disabled):hover {
+  background: var(--color-hover);
+  border-color: var(--color-text-subtle);
+}
+.ide-button--ghost {
+  color: var(--color-text);
+}
+.ide-button--ghost:not(:disabled):hover {
+  background: var(--color-hover);
+}
+.ide-button--danger {
+  background: var(--color-danger);
+  color: #ffffff;
+}
+.ide-button--danger:not(:disabled):hover {
+  opacity: 0.88;
+}
+
+/* ---------------------------------------------------------------------------
+   Motion: short and purposeful. Coding tools must never feel sluggish.
+   --------------------------------------------------------------------------- */
+
+@keyframes ide-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ide-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ide-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes ide-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ide-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.anim-fade-in {
+  animation: ide-fade-in 120ms ease;
+}
+.anim-slide-up {
+  animation: ide-slide-up 140ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+.anim-scale-in {
+  animation: ide-scale-in 110ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+.anim-spin {
+  animation: ide-spin 700ms linear infinite;
+}
+.anim-pulse {
+  animation: ide-pulse 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Panel resize handle
+   --------------------------------------------------------------------------- */
+
+.resize-handle {
+  position: relative;
+  flex: 0 0 auto;
+  background: var(--color-border);
+  transition: background-color 100ms ease;
+}
+.resize-handle--vertical {
+  width: 1px;
+  cursor: col-resize;
+}
+.resize-handle--horizontal {
+  height: 1px;
+  cursor: row-resize;
+}
+/* Widen the grab area without making the line look thick. */
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.resize-handle--vertical::after {
+  left: -3px;
+  right: -3px;
+}
+.resize-handle--horizontal::after {
+  top: -3px;
+  bottom: -3px;
+}
+.resize-handle:hover,
+.resize-handle[data-dragging='true'] {
+  background: var(--color-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Monaco fills its container so resizing is exact
+   --------------------------------------------------------------------------- */
+
+.editor-surface,
+.editor-surface .monaco-editor,
+.editor-surface .overflow-guard {
+  border-radius: 0;
 }

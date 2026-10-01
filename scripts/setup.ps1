@@ -1,4 +1,4 @@
-Write-Host "Setting up Local AI Coding IDE..."
+Write-Host "Setting up ForgeAI Studio..."
 Set-Location $PSScriptRoot\..
 npm install
 Set-Location shared; npm install; npm run build; Set-Location ..

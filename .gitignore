@@ -17,3 +17,13 @@ out/
 .vscode/
 *.swp
 *.swo
+# Electron release/build artifacts
+frontend/release/
+frontend/release-new/
+frontend/release-fixed/
+frontend/release-final/
+
+# Local IDE runtime data
+backend/data/recent-workspaces.json
+# Local IDE runtime data
+backend/data/recent-workspaces.json

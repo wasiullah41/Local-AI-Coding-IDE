@@ -1,18 +1,7 @@
 import { extensionRegistry } from './extensionRegistry';
+import type { ExtensionSummary } from '@local-ide/shared';
 
-export interface ExtensionInfo {
-  id: string;
-  name: string;
-  displayName: string;
-  description: string;
-  version: string;
-  author: string;
-  category: string;
-  enabled: boolean;
-  builtin: boolean;
-  languages?: string[];
-  fileExtensions?: string[];
-}
+export type ExtensionInfo = ExtensionSummary;
 
 const BUILTIN_EXTENSIONS: ExtensionInfo[] = [
   {

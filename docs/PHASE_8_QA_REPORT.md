@@ -1,7 +1,7 @@
 # PHASE 8 — FULL SYSTEM QA REPORT
 
 **Generated:** 2026-09-23T16:00:00Z  
-**Project:** Local AI Coding IDE  
+**Project:** ForgeAI Studio
 **Test Environment:** Windows 11, Node v24.18.0, npm 11.16.0, Python 3.14.6
 
 ---

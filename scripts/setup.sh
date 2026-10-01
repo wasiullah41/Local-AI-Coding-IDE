@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Setting up Local AI Coding IDE..."
+echo "Setting up ForgeAI Studio..."
 cd "$(dirname "$0")/.."
 npm install
 cd shared && npm install && npm run build && cd ..

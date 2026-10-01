@@ -29,7 +29,9 @@ export const WS_EVENTS = {
   SEARCH_COMPLETE: 'search:complete',
   SEARCH_ERROR: 'search:error',
 
-  // AI (future)
+  // AI coding agent
+  AGENT_EVENT: 'agent:event',
+  AGENT_TASK_STATUS: 'agent:task_status',
   AI_MESSAGE: 'ai:message',
   AI_TOOL_CALL: 'ai:toolCall',
   AI_TOOL_RESULT: 'ai:toolResult',

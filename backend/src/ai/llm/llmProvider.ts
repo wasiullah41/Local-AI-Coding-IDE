@@ -5,12 +5,19 @@ export interface ChatMessage {
 
 export interface ChatResponse {
   content: string;
+  /** Populated by providers that can report token usage. */
+  usage?: { promptTokens?: number; completionTokens?: number };
 }
 
 export interface LLMProvider {
-  name: string;
-  chat(messages: ChatMessage[]): Promise<ChatResponse>;
-  stream?(messages: ChatMessage[], onData: (data: string) => void): Promise<void>;
+  readonly name: string;
+  chat(messages: ChatMessage[], options?: { signal?: AbortSignal }): Promise<ChatResponse>;
   getModelInfo(): { model: string; provider: string };
   isAvailable(): Promise<boolean>;
+  /**
+   * Explains, in one user-facing sentence, why the provider cannot be used.
+   * Shown in the AI panel so a missing dependency is a clear message rather
+   * than a mysterious failure.
+   */
+  describeFailure?(): Promise<string | undefined>;
 }

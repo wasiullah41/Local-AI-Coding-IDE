@@ -28,8 +28,8 @@ describe('Agent Full E2E Audit', () => {
         mockLLM.setResponses('test-e2e-1', [
             { content: JSON.stringify({ type: 'TOOL_CALL', tool: 'create_file', arguments: { path: 'hello.js', content: 'console.log("Hello from Phase 9")' }}) },
             { content: JSON.stringify({ type: 'TOOL_CALL', tool: 'terminal', arguments: { command: 'node hello.js' }}) },
-            { content: JSON.stringify({ type: 'TOOL_CALL', tool: 'verify', arguments: { type: 'command', command: 'echo "verified"' }}) },
-            { content: JSON.stringify({ type: 'FINAL', content: 'hello.py created, run and verified' }) }
+            { content: JSON.stringify({ type: 'TOOL_CALL', tool: 'terminal', arguments: { command: 'echo "verified"' }}) },
+            { content: JSON.stringify({ type: 'FINAL', content: 'hello.js created, run and verified' }) }
         ]);
 
         await orchestrator.run(state);
@@ -40,6 +40,25 @@ describe('Agent Full E2E Audit', () => {
         expect(fileContent.content).toContain('console.log("Hello from Phase 9")');
         expect(state.toolResults[1].success).toBe(true);
         expect(state.toolResults[2].success).toBe(true);
+        expect(state.filesChanged).toContain('hello.js');
+    });
+
+    it('E2E #3: verify must not act as an arbitrary shell runner', async () => {
+        // `verify` runs the project's own package.json scripts. It must refuse
+        // to be used as a way to execute an arbitrary command.
+        const mockLLM = new MockLLMProvider();
+        const orchestrator = new AgentOrchestrator(mockLLM, toolRegistry);
+        const state = createInitialState('Verify', workspaceRoot);
+
+        mockLLM.setResponses('test-e2e-3', [
+            { content: JSON.stringify({ type: 'TOOL_CALL', tool: 'verify', arguments: { type: 'command', command: 'echo should-not-run' }}) },
+            { content: JSON.stringify({ type: 'FINAL', content: 'done' }) }
+        ]);
+
+        await orchestrator.run(state);
+
+        expect(state.toolResults[0].success).toBe(false);
+        expect(state.toolResults[0].error).toMatch(/no "command" script/i);
     });
 
     it('E2E #2: should fix buggy add function', async () => {

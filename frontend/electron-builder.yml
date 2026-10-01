@@ -1,8 +1,25 @@
-appId: com.local-ai-coding-ide.app
-productName: Local AI Coding IDE
+# Kept in sync with the authoritative `build` block in package.json.
+# electron-builder resolves `package.json#build` first, so this file is not what
+# `npm run dist` uses; it exists so the two cannot drift apart unnoticed.
+appId: com.forgeai.studio
+productName: ForgeAI Studio
 directories:
-  output: dist-electron
+  output: release
+  buildResources: build
 files:
   - dist/**/*
   - electron-dist/**/*
   - package.json
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ForgeAI Studio
